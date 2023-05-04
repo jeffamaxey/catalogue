@@ -160,7 +160,7 @@ class FileHash:
         self.mode, _, self.value = spec.partition('=')
 
     def __repr__(self):
-        return '<FileHash mode: {} value: {}>'.format(self.mode, self.value)
+        return f'<FileHash mode: {self.mode} value: {self.value}>'
 
 
 _T = TypeVar("_T")
@@ -356,9 +356,8 @@ class Distribution:
     def _read_sections(lines):
         section = None
         for line in filter(None, lines):
-            section_match = re.match(r'\[(.*)\]$', line)
-            if section_match:
-                section = section_match.group(1)
+            if section_match := re.match(r'\[(.*)\]$', line):
+                section = section_match[1]
                 continue
             yield locals()
 
@@ -518,8 +517,8 @@ class Prepared:
 
     def is_egg(self, base):
         normalized = self.legacy_normalize(self.name or '')
-        prefix = normalized + '-' if normalized else ''
-        versionless_egg_name = normalized + '.egg' if self.name else ''
+        prefix = f'{normalized}-' if normalized else ''
+        versionless_egg_name = f'{normalized}.egg' if self.name else ''
         return (
             base == versionless_egg_name
             or base.startswith(prefix)

@@ -84,9 +84,7 @@ class Registry(object):
             _set(list(self.namespace) + [name], func)
             return func
 
-        if func is not None:
-            return do_registration(func)
-        return do_registration
+        return do_registration(func) if func is not None else do_registration
 
     def get(self, name: str) -> Any:
         """Get the registered function for a given name.
@@ -95,8 +93,7 @@ class Registry(object):
         RETURNS (Any): The registered function.
         """
         if self.entry_points:
-            from_entry_point = self.get_entry_point(name)
-            if from_entry_point:
+            if from_entry_point := self.get_entry_point(name):
                 return from_entry_point
         namespace = list(self.namespace) + [name]
         if not check_exists(*namespace):
@@ -116,7 +113,7 @@ class Registry(object):
         global REGISTRY
         result = {}
         if self.entry_points:
-            result.update(self.get_entry_points())
+            result |= self.get_entry_points()
         for keys, value in REGISTRY.copy().items():
             if len(self.namespace) == len(keys) - 1 and all(
                 self.namespace[i] == keys[i] for i in range(len(self.namespace))
@@ -129,10 +126,10 @@ class Registry(object):
 
         RETURNS (Dict[str, Any]): Entry points, keyed by name.
         """
-        result = {}
-        for entry_point in self._get_entry_points():
-            result[entry_point.name] = entry_point.load()
-        return result
+        return {
+            entry_point.name: entry_point.load()
+            for entry_point in self._get_entry_points()
+        }
 
     def get_entry_point(self, name: str, default: Optional[Any] = None) -> Any:
         """Check if registered entry point is available for a given name in the
@@ -142,10 +139,14 @@ class Registry(object):
         default (Any): The default value to return.
         RETURNS (Any): The loaded entry point or the default value.
         """
-        for entry_point in self._get_entry_points():
-            if entry_point.name == name:
-                return entry_point.load()
-        return default
+        return next(
+            (
+                entry_point.load()
+                for entry_point in self._get_entry_points()
+                if entry_point.name == name
+            ),
+            default,
+        )
 
     def _get_entry_points(self) -> List[importlib_metadata.EntryPoint]:
         if isinstance(AVAILABLE_ENTRY_POINTS, SelectableGroups):
@@ -215,13 +216,12 @@ def _get_all(namespace: Sequence[str]) -> Dict[Tuple[str, ...], Any]:
         by their full namespaces.
     """
     global REGISTRY
-    result = {}
-    for keys, value in REGISTRY.copy().items():
-        if len(namespace) <= len(keys) and all(
-            namespace[i] == keys[i] for i in range(len(namespace))
-        ):
-            result[keys] = value
-    return result
+    return {
+        keys: value
+        for keys, value in REGISTRY.copy().items()
+        if len(namespace) <= len(keys)
+        and all(namespace[i] == keys[i] for i in range(len(namespace)))
+    }
 
 
 def _set(namespace: Sequence[str], func: Any) -> None:
